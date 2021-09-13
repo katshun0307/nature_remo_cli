@@ -2,6 +2,7 @@ defmodule NatureRemoCli.Interface.AirconComponent do
   import Ratatouille.View
 
   alias NatureRemoCli
+  alias NatureRemoCli.Api
   alias NatureRemoCli.Interface.{ApplicanceComponent, ComponentTools}
   alias Ratatouille.Constants
 
@@ -10,6 +11,13 @@ defmodule NatureRemoCli.Interface.AirconComponent do
   @arrow_down Constants.key(:arrow_down)
   @arrow_left Constants.key(:arrow_left)
   @arrow_right Constants.key(:arrow_right)
+
+  @aircon_api_keypair %{
+    "temp" => "temperature",
+    "mode" => "operation_mode",
+    "vol" => "air_volume",
+    "dir" => "air_direction"
+  }
 
   def enable_component(model, device \\ nil) do
     device =
@@ -133,7 +141,17 @@ defmodule NatureRemoCli.Interface.AirconComponent do
     move_column(model, param_name, new_param_value)
   end
 
-  def send_command(_model) do
+  def send_command(
+        %{control_component: %{device: device, current_setting: setting}, client: client} = _model
+      ) do
+    appliance_id = device["id"]
+    {:ok, _res} = Api.post_control_ac(client, appliance_id, setting |> translate_param_name)
+  end
+
+  defp translate_param_name(setting) do
+    Enum.reduce(setting, %{}, fn {param_name, param_value}, acc ->
+      acc |> Map.put_new(@aircon_api_keypair[param_name], param_value)
+    end)
   end
 
   def component(%{control_component: %{type: :aircon} = component_model} = _model) do

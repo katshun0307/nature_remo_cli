@@ -36,11 +36,12 @@ defmodule NatureRemoCli.Api do
     Tesla.get(client, "/appliances/#{appliance_id}/signals")
   end
 
-  def post_control_ac!(client, ac_id, settings) do
+  def post_control_ac(client, ac_id, settings) do
     # settings include: temperature, operation_mode, air_volume, air_direction, button
+
     Tesla.post(
       client,
-      "/appliances/appliance/#{ac_id}/aircon_settings",
+      "appliances/#{ac_id}/aircon_settings",
       settings
     )
   end

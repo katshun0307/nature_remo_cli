@@ -15,6 +15,10 @@ defmodule NatureRemoCli.Interface.ComponentTools do
     Enum.at(list, new_index)
   end
 
+  def number_modulo(number, modulo) do
+    rem(number + modulo, modulo)
+  end
+
   def increment_number_modulo(number, modulo) do
     rem(number + modulo + 1, modulo)
   end

@@ -64,9 +64,57 @@ defmodule NatureRemoCli.Interface.AirconComponent do
       {:event, %{key: @arrow_left}} ->
         decrement_column(model)
 
+      {:event, %{ch: keycode}}
+      when ?0 <= keycode and keycode <= ?9 ->
+        model |> change_mode_with_number(<<keycode>> |> String.to_integer())
+
       _ ->
         model
     end
+  end
+
+  def change_mode_with_number(model, number) do
+    modes = get_modes(model.control_component)
+
+    if number < length(modes) do
+      change_mode(model, Enum.at(modes, number))
+    else
+      model
+    end
+  end
+
+  def change_mode(%{control_component: component_model} = model, mode) do
+    param_info = get_parameter_options(component_model, mode)
+    selected_param_name = param_info |> Map.keys() |> Enum.at(0)
+
+    model
+    |> put_in([:control_component, :selected], %{mode: mode, param_name: selected_param_name})
+    |> put_in(
+      [:control_component, :current_setting, mode],
+      get_initial_setting(component_model, param_info)
+    )
+  end
+
+  # Get initial param settings for new mode
+  def get_initial_setting(%{current_setting: current_setting} = _control_component, param_info) do
+    param_info
+    |> Enum.map(fn {param_name, param_options} ->
+      current_param_value = current_setting[param_name]
+
+      if current_param_value do
+        new_param_value =
+          if(Enum.member?(param_options, current_param_value)) do
+            current_param_value
+          else
+            Enum.at(param_options, 0)
+          end
+
+        {param_name, new_param_value}
+      else
+        nil
+      end
+    end)
+    |> Map.new()
   end
 
   def move_row(model, new_param_name) do
@@ -154,18 +202,34 @@ defmodule NatureRemoCli.Interface.AirconComponent do
     end)
   end
 
-  def component(%{control_component: %{type: :aircon} = component_model} = _model) do
+  def component(%{control_component: %{type: :aircon, device: device} = component_model} = _model) do
     overlay(padding: 15) do
-      generate_mode_panel(component_model)
+      panel(title: device["nickname"]) do
+        generate_mode_select_table(component_model)
+        generate_paramer_options_table(component_model, component_model.selected.mode)
+        label(content: "Press ESC to close popup. Press ENTER to fire signal.")
+      end
     end
   end
 
   def component(_model) do
   end
 
-  defp generate_mode_panel(%{selected: %{mode: mode}} = component_model) do
-    panel do
-      generate_paramer_options_table(component_model, mode)
+  def generate_mode_select_table(component_model) do
+    modes_with_index = get_modes(component_model) |> Enum.with_index()
+
+    table do
+      table_row do
+        modes_with_index |> Enum.map(fn m -> generate_column(m, component_model) end)
+      end
+    end
+  end
+
+  def generate_column({mode, i}, %{selected: %{mode: selected_mode}} = _component_model) do
+    if mode == selected_mode do
+      table_cell(content: "#{i}: #{mode}", background: :blue)
+    else
+      table_cell(content: "#{i}: #{mode}")
     end
   end
 
@@ -184,7 +248,7 @@ defmodule NatureRemoCli.Interface.AirconComponent do
        ) do
     table_row(selected_attributes(param_name == selected_param_name)) do
       table_cell(content: param_name)
-      table_cell(content: current_setting[param_name])
+      table_cell(content: "◀ #{current_setting[param_name]} ▶")
     end
   end
 
@@ -198,5 +262,11 @@ defmodule NatureRemoCli.Interface.AirconComponent do
 
   defp get_parameter_options(%{device: device} = _component_model, mode) do
     device["aircon"]["range"]["modes"][mode]
+    |> Enum.filter(fn {_, options} -> length(options) > 1 end)
+    |> Map.new()
+  end
+
+  def get_modes(%{device: device} = _component_model) do
+    device["aircon"]["range"]["modes"] |> Map.keys()
   end
 end

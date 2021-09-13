@@ -2,6 +2,7 @@ defmodule NatureRemoCli.Interface.ApplicanceComponent do
   import Ratatouille.View
 
   alias NatureRemoCli.Api
+  alias NatureRemoCli.Interface.ComponentTools
 
   alias Ratatouille.Constants
   @arrow_down Constants.key(:arrow_down)
@@ -28,7 +29,7 @@ defmodule NatureRemoCli.Interface.ApplicanceComponent do
       |> Map.put(
         :appliance_component,
         appliance_component
-        |> Map.put(:selected, rem(selection, size))
+        |> Map.put(:selected, ComponentTools.number_modulo(selection, size))
       )
     else
       model

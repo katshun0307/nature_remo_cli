@@ -8,6 +8,7 @@ defmodule NatureRemoCli.App do
   alias Ratatouille.Constants
 
   @enter Constants.key(:enter)
+  @esc Constants.key(:esc)
 
   def init(_context \\ %{}) do
     %{client: Api.client(), debug: "", focus: ApplicanceComponent}
@@ -36,6 +37,11 @@ defmodule NatureRemoCli.App do
       {:event, %{key: @enter}} when model.focus == AirconComponent ->
         model
         |> AirconComponent.update(msg)
+        |> AirconComponent.disable_component()
+        |> put_focus(ApplicanceComponent)
+
+      {:event, %{key: @esc}} when model.focus == AirconComponent ->
+        model
         |> AirconComponent.disable_component()
         |> put_focus(ApplicanceComponent)
 

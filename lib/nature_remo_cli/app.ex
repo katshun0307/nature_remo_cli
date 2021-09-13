@@ -4,25 +4,49 @@ defmodule NatureRemoCli.App do
   import Ratatouille.View
 
   alias NatureRemoCli.Api
-  alias NatureRemoCli.Interface.{ApplicanceComponent, SensorComponent}
+  alias NatureRemoCli.Interface.{ApplicanceComponent, SensorComponent, AirconComponent}
   alias Ratatouille.Constants
 
-  @arrow_down Constants.key(:arrow_down)
-  @arrow_up Constants.key(:arrow_up)
+  @enter Constants.key(:enter)
 
-  def init(_context) do
-    %{client: Api.client(), debug: ""}
+  def init(_context \\ %{}) do
+    %{client: Api.client(), debug: "", focus: ApplicanceComponent}
     |> ApplicanceComponent.assign()
     |> SensorComponent.assign()
   end
 
+  def put_focus(model, module) do
+    model |> Map.put(:focus, module)
+  end
+
+  def enable_appliance_component(model, appliance) do
+    case appliance["type"] do
+      "AC" -> model |> put_focus(AirconComponent) |> AirconComponent.enable_component(appliance)
+      _ -> model
+    end
+  end
+
   def update(model, msg) do
     case msg do
-      {:event, %{key: @arrow_down}} ->
-        model |> ApplicanceComponent.increment_selection()
+      # Move Focus
+      {:event, %{key: @enter}} when model.focus == ApplicanceComponent ->
+        appliance = ApplicanceComponent.get_current_device(model)
+        model |> enable_appliance_component(appliance) |> put_focus(AirconComponent)
 
-      {:event, %{key: @arrow_up}} ->
-        model |> ApplicanceComponent.decrement_selection()
+      {:event, %{key: @enter}} when model.focus == AirconComponent ->
+        model
+        |> AirconComponent.update(msg)
+        |> AirconComponent.disable_component()
+        |> put_focus(ApplicanceComponent)
+
+      # Pass down msg to Focus
+      msg when model.focus == ApplicanceComponent ->
+        model
+        |> ApplicanceComponent.update(msg)
+
+      msg when model.focus == AirconComponent ->
+        model
+        |> AirconComponent.update(msg)
 
       {:event, %{ch: keycode}}
       when ?0 <= keycode and keycode <= ?9 ->
@@ -45,6 +69,9 @@ defmodule NatureRemoCli.App do
         # a row
         ApplicanceComponent.component(model)
       end
+
+      # overlay
+      AirconComponent.component(model)
     end
   end
 
